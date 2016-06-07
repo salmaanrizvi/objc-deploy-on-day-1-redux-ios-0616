@@ -47,11 +47,11 @@
 -(void)viewDidLoad
 {
     [super viewDidLoad];
-
+    
     for(FISBoardSpaceView *boardSpace in self.boardSpaces) {
         [boardSpace addTarget:self action:@selector(boardSpaceTapped:) forControlEvents:UIControlEventTouchUpInside];
     }
-
+    
     self.game = [[FISTicTacToeGame alloc] init];
     [self startGame];
 }
@@ -64,10 +64,10 @@
     else {
         self.xPlayer = [[FISHumanPlayer alloc] init];
     }
-
+    
     self.xPlayer.symbol = @"X";
     self.xPlayer.game = self.game;
-
+    
     if(self.oPlayerIsAI) {
         self.oPlayer = [[FISComputerPlayer alloc] init];
     }
@@ -76,12 +76,12 @@
     }
     self.oPlayer.symbol = @"O";
     self.oPlayer.game = self.game;
-
-
+    
+    
     [self.game resetBoard];
     [self reloadBoard];
     [self setUpPlayerDisplays];
-
+    
     self.currentPlayer = self.xPlayer;
     [self handleTurn];
 }
@@ -97,21 +97,21 @@
     NSMutableParagraphStyle *paragraphStyle = [[NSParagraphStyle defaultParagraphStyle] mutableCopy];
     paragraphStyle.alignment = NSTextAlignmentCenter;
     [icon addAttribute:NSParagraphStyleAttributeName value:paragraphStyle];
-
+    
     return icon.attributedString;
 }
 
 -(NSAttributedString *)attributedStringForAIIconForPlayer:(id<FISTicTacToePlayer>)player
 {
     FAKIcon *icon;
-
+    
     if([player isKindOfClass:[FISHumanPlayer class]]) {
         icon = [FAKIonIcons iosPersonIconWithSize:22];
     }
     else {
         icon = [FAKIonIcons outletIconWithSize:22];
     }
-
+    
     return [self centeredAttributedStringForIcon:icon];
 }
 
@@ -119,23 +119,28 @@
 {
     self.xPlayerIconLabel.attributedText = [self centeredAttributedStringForIcon:[FAKIonIcons androidCloseIconWithSize:20]];
     self.xPlayerAIIconLabel.attributedText = [self attributedStringForAIIconForPlayer:self.xPlayer];
-    self.xPlayerWinsLabel.text = [NSString stringWithFormat:@"%lu win%@", self.game.xPlayerWinCount, self.game.xPlayerWinCount == 1 ? @"" : @"s"];
-
+    
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    self.game.xPlayerWinCount = [defaults integerForKey:@"xPlayerWinCount"];
+    self.game.oPlayerWinCount = [defaults integerForKey:@"oPlayerWinCount"];
+    
+    self.xPlayerWinsLabel.text = [NSString stringWithFormat:@"%li win%@", self.game.xPlayerWinCount, self.game.xPlayerWinCount == 1 ? @"" : @"s"];
+    self.oPlayerWinsLabel.text = [NSString stringWithFormat:@"%li win%@", self.game.oPlayerWinCount, self.game.oPlayerWinCount == 1 ? @"" : @"s"];
+    
     self.oPlayerIconLabel.attributedText = [self centeredAttributedStringForIcon:[FAKIonIcons androidRadioButtonOffIconWithSize:16]];
     self.oPlayerAIIconLabel.attributedText = [self attributedStringForAIIconForPlayer:self.oPlayer];
-    self.oPlayerWinsLabel.text = [NSString stringWithFormat:@"%lu win%@", self.game.oPlayerWinCount, self.game.oPlayerWinCount == 1 ? @"" : @"s"];
 }
 
 -(void)handleTurn
 {
     NSOperationQueue *bgQueue = [[NSOperationQueue alloc] init];
-
+    
     [bgQueue addOperationWithBlock:^{
         [self.currentPlayer decidePlayWithCompletion:^(NSUInteger column, NSUInteger row) {
             if(self.gameIsCanceled) {
                 return;
             }
-
+            
             [[NSOperationQueue mainQueue] addOperationWithBlock:^{
                 if(self.currentPlayer == self.xPlayer) {
                     [self.game playXAtColumn:column row:row];
@@ -143,7 +148,7 @@
                 else {
                     [self.game playOAtColumn:column row:row];
                 }
-
+                
                 [self reloadBoard];
                 
                 [self nextTurnOrEndGame];
@@ -166,19 +171,19 @@
         [self endGameWithWinningPlayerSymbol:winningPlayerSymbol];
         return;
     }
-
+    
     if([self.game isADraw]) {
         [self endGameWithWinningPlayerSymbol:nil];
         return;
     }
-
+    
     if(self.currentPlayer == self.xPlayer) {
         self.currentPlayer = self.oPlayer;
     }
     else {
         self.currentPlayer = self.xPlayer;
     }
-
+    
     [self handleTurn];
 }
 
@@ -190,7 +195,12 @@
     else if([symbol isEqualToString:@"O"]) {
         self.game.oPlayerWinCount++;
     }
-
+    
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    [defaults setInteger:self.game.xPlayerWinCount forKey:@"xPlayerWinCount"];
+    [defaults setInteger:self.game.oPlayerWinCount forKey:@"oPlayerWinCount"];
+    [defaults synchronize];
+    
     self.winningPlayerSymbol = symbol;
     [self performSegueWithIdentifier:@"GameToWinModalSegueID" sender:nil];
 }
@@ -212,7 +222,7 @@
     if(![self.game canPlayAtColumn:sender.column row:sender.row]) {
         return;
     }
-
+    
     if([self.currentPlayer isKindOfClass:[FISHumanPlayer class]]) {
         [((FISHumanPlayer *)self.currentPlayer) playAtColumn:sender.column row:sender.row];
     }
@@ -221,15 +231,15 @@
 -(IBAction)backButtonTapped:(id)sender
 {
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Are you sure you want to exit?" message:@"The current game will be lost forever!" preferredStyle:UIAlertControllerStyleActionSheet];
-
+    
     [alert addAction:[UIAlertAction actionWithTitle:@"Exit" style:UIAlertActionStyleDestructive handler:^(UIAlertAction *action) {
         self.gameIsCanceled = YES;
         [self.currentPlayer cancelPlay];
         [self.navigationController popViewControllerAnimated:YES];
     }]];
-
+    
     [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
-
+    
     [self presentViewController:alert animated:YES completion:nil];
 }
 

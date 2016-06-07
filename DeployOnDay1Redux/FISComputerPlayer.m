@@ -12,12 +12,21 @@
 
 +(BOOL)isEnabled
 {
-    return NO;
+    return YES;
 }
 
 -(FISTicTacToePosition)nextPlay
 {
-    return FISTicTacToePositionMake(0, 0);
+    NSUInteger upperRandomLimit = 3;
+    NSUInteger randomRow = arc4random_uniform(upperRandomLimit);
+    NSUInteger randomCol = arc4random_uniform(upperRandomLimit);
+    
+    while(![self.game canPlayAtColumn:randomCol row:randomRow]) {
+        randomRow = arc4random_uniform(upperRandomLimit);
+        randomCol = arc4random_uniform(upperRandomLimit);
+    }
+    NSLog(@"Computer playing piece %@", self.symbol);
+    return FISTicTacToePositionMake(randomCol, randomRow);
 }
 
 @end
